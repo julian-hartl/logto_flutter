@@ -32,7 +32,6 @@ class LogtoClient {
           'Token storage has not been initialized. Have you forgot to call LogtoFlutter.initialize() in main()?');
     }
     _tokenStorage = TokenStorage.loaded!;
-    print(_tokenStorage.accessToken);
   }
 
   bool get isAuthenticate {
