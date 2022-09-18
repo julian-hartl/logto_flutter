@@ -1,9 +1,11 @@
-import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
-
+import 'package:http/http.dart' as http;
 import 'package:logto_dart_sdk/logto_client.dart';
+import 'package:logto_dart_sdk/logto_dart_sdk.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await LogtoFlutter.initialize();
   runApp(const MyApp());
 }
 
@@ -61,7 +63,7 @@ class _MyHomePageState extends State<MyHomePage> {
         var claims = logtoClient.idTokenClaims?.toJson();
 
         if (claims != null) {
-          content = claims.entries.map((e) => '${e.key}:${e.value}').join("\n");
+          content = logtoClient.idToken ?? 'no token';
         }
       });
     }
@@ -79,7 +81,7 @@ class _MyHomePageState extends State<MyHomePage> {
           children: <Widget>[
             Container(
               padding: const EdgeInsets.all(64),
-              child: Text(
+              child: SelectableText(
                 content,
               ),
             ),
