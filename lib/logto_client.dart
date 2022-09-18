@@ -134,21 +134,4 @@ class LogtoClient {
     );
     await _tokenStorage.save();
   }
-
-  Future<void> signOut() async {
-    if (_loading) return;
-    _loading = true;
-    if (!isAuthenticate || _tokenStorage.refreshToken == null) {
-      return;
-    }
-    final oidcConfig = await _getOidcConfig();
-    await logto_core.revoke(
-      httpClient: _httpClient,
-      revocationEndpoint: oidcConfig.revocationEndpoint,
-      clientId: config.appId,
-      token: _tokenStorage.refreshToken!,
-    );
-    await _tokenStorage.clear();
-    _loading = false;
-  }
 }
