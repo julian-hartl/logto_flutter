@@ -64,7 +64,7 @@ class LogtoClient {
     _loading = true;
     _pkce = PKCE.generate();
     _state = utils.generateRandomString();
-    await _tokenStorage.setIdToken(null);
+    _tokenStorage.setIdToken(null);
 
     var oidcConfig = await _getOidcConfig();
 
