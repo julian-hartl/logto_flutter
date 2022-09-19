@@ -58,7 +58,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void signInCallback() {
-    if (logtoClient.isAuthenticate) {
+    if (logtoClient.isAuthenticated) {
       setState(() {
         var claims = logtoClient.idTokenClaims?.toJson();
 

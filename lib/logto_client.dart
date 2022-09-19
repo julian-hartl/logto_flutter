@@ -34,7 +34,7 @@ class LogtoClient {
     _tokenStorage = TokenStorage.loaded!;
   }
 
-  bool get isAuthenticate {
+  bool get isAuthenticated {
     return _tokenStorage.idToken != null;
   }
 
