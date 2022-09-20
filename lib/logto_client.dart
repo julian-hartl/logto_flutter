@@ -11,6 +11,7 @@ import '/src/utilities/pkce.dart';
 import '/src/utilities/token_storage.dart';
 import '/src/utilities/utils.dart' as utils;
 import '/src/utilities/webview_provider.dart';
+import '/src/utilities/logto_storage_strategy.dart';
 
 export '/src/interfaces/logto_config.dart';
 
@@ -26,21 +27,24 @@ class LogtoClient {
 
   OidcProviderConfig? _oidcConfig;
 
-  LogtoClient(this.config, this._httpClient) {
-    if (TokenStorage.loaded == null) {
-      throw Exception(
-          'Token storage has not been initialized. Have you forgot to call LogtoFlutter.initialize() in main()?');
-    }
-    _tokenStorage = TokenStorage.loaded!;
+  LogtoClient(this.config, this._httpClient,
+      [LogtoStorageStrategy? storageProvider]) {
+    _tokenStorage = TokenStorage(storageProvider);
   }
 
-  bool get isAuthenticated {
-    return _tokenStorage.idToken != null;
+  Future<bool> get isAuthenticated async {
+    return await _tokenStorage.idToken != null;
   }
 
-  String? get idToken => _tokenStorage.idToken?.serialization;
+  Future<String?> get idToken async {
+    var token = await _tokenStorage.idToken;
+    return token?.serialization;
+  }
 
-  OpenIdClaims? get idTokenClaims => _tokenStorage.idToken?.claims;
+  Future<OpenIdClaims?> get idTokenClaims async {
+    var token = await _tokenStorage.idToken;
+    return token?.claims;
+  }
 
   Future<OidcProviderConfig> _getOidcConfig() async {
     if (_oidcConfig != null) {
@@ -127,11 +131,9 @@ class LogtoClient {
           LogtoAuthExceptions.idTokenValidationError, '$violations');
     }
 
-    _tokenStorage = TokenStorage(
-      idToken: idToken,
-      accessToken: tokenResponse.refreshToken,
-      refreshToken: tokenResponse.refreshToken,
-    );
-    await _tokenStorage.save();
+    await _tokenStorage.save(
+        idToken: idToken,
+        accessToken: tokenResponse.accessToken,
+        refreshToken: tokenResponse.refreshToken);
   }
 }

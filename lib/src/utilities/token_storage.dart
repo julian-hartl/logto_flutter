@@ -16,40 +16,10 @@ class TokenStorage {
 
   static TokenStorage? loaded;
 
-  TokenStorage({
-    required IdToken? idToken,
-    required String? accessToken,
-    required String? refreshToken,
+  TokenStorage(
     LogtoStorageStrategy? storageStrategy,
-  }) {
+  ) {
     _storage = storageStrategy ?? SecureStorageStrategy();
-    _idToken = idToken;
-    _accessToken = accessToken;
-    _refreshToken = refreshToken;
-  }
-
-  static Future<TokenStorage> fromPersistence({
-    LogtoStorageStrategy? storageStrategy,
-  }) async {
-    final storage = storageStrategy ?? SecureStorageStrategy();
-    final values = await Future.wait<String?>([
-      storage.read(key: _TokenStorageKeys.accessTokenKey),
-      storage.read(key: _TokenStorageKeys.refreshTokenKey),
-      storage.read(key: _TokenStorageKeys.idTokenKey),
-    ]);
-    return TokenStorage(
-      idToken: _decodeIdToken(values[2]),
-      accessToken: values[0],
-      refreshToken: values[1],
-    );
-  }
-
-  Future<void> save() async {
-    await Future.wait([
-      setAccessToken(_accessToken),
-      setIdToken(_idToken),
-      setRefreshToken(_refreshToken),
-    ]);
   }
 
   static IdToken? _decodeIdToken(String? encoded) {
@@ -61,14 +31,46 @@ class TokenStorage {
     return token?.toCompactSerialization();
   }
 
-  IdToken? get idToken => _idToken;
+  Future<IdToken?> get idToken async {
+    if (_idToken != null) {
+      return _idToken!;
+    }
 
-  String? get accessToken => _accessToken;
+    var idTokenFromStorage =
+        await _storage.read(key: _TokenStorageKeys.idTokenKey);
+    _idToken = _decodeIdToken(idTokenFromStorage);
 
-  String? get refreshToken => _refreshToken;
+    return _idToken;
+  }
+
+  /**
+   * TODO: convert the AccessToken storage to Map<resource, token>
+   * Accesstoken is requested and granted based on different resources
+   * should be able to store and get the access token base on different resource
+   */
+  Future<String?> get accessToken async {
+    if (_accessToken != null) {
+      return _accessToken;
+    }
+
+    _accessToken = await _storage.read(key: _TokenStorageKeys.accessTokenKey);
+
+    return _accessToken;
+  }
+
+  Future<String?> get refreshToken async {
+    if (_refreshToken != null) {
+      return _refreshToken;
+    }
+
+    _refreshToken = await _storage.read(key: _TokenStorageKeys.refreshTokenKey);
+
+    return _refreshToken;
+  }
 
   Future<void> setIdToken(IdToken? idToken) async {
     _idToken = idToken;
+
     await _storage.write(
       key: _TokenStorageKeys.idTokenKey,
       value: _encodeIdToken(idToken),
@@ -85,10 +87,20 @@ class TokenStorage {
 
   Future<void> setRefreshToken(String? refreshToken) async {
     _refreshToken = refreshToken;
+
     await _storage.write(
       key: _TokenStorageKeys.refreshTokenKey,
       value: refreshToken,
     );
+  }
+
+  Future<void> save(
+      {IdToken? idToken, String? accessToken, String? refreshToken}) async {
+    await Future.wait([
+      setAccessToken(accessToken),
+      setIdToken(idToken),
+      setRefreshToken(refreshToken),
+    ]);
   }
 
   Future<void> clear() async {

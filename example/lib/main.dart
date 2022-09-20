@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:logto_dart_sdk/logto_client.dart';
 import 'package:logto_dart_sdk/logto_dart_sdk.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await LogtoFlutter.initialize();
   runApp(const MyApp());
 }
 
@@ -40,6 +38,8 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   String content = 'Logto SDK Demo Home Page';
+  bool isAuthenticated = false;
+
   final client = http.Client();
   final redirectUri = 'io.logto://callback';
   final config = const LogtoConfig(
@@ -53,24 +53,39 @@ class _MyHomePageState extends State<MyHomePage> {
     _init();
   }
 
-  void _init() async {
-    logtoClient = LogtoClient(config, client);
-  }
-
-  void signInCallback() {
-    if (logtoClient.isAuthenticated) {
+  void render() async {
+    if (await logtoClient.isAuthenticated) {
+      var claims = await logtoClient.idTokenClaims;
       setState(() {
-        var claims = logtoClient.idTokenClaims?.toJson();
-
-        if (claims != null) {
-          content = logtoClient.idToken ?? 'no token';
-        }
+        content = claims!.toJson().toString();
+        isAuthenticated = true;
       });
     }
   }
 
+  void _init() async {
+    logtoClient = LogtoClient(config, client);
+    render();
+  }
+
+  void signInCallback() {
+    render();
+  }
+
   @override
   Widget build(BuildContext context) {
+    Widget signInButton = TextButton(
+      style: TextButton.styleFrom(
+        backgroundColor: Colors.deepPurpleAccent,
+        padding: const EdgeInsets.all(16.0),
+        textStyle: const TextStyle(fontSize: 20),
+      ),
+      onPressed: () {
+        logtoClient.signIn(context, redirectUri, signInCallback);
+      },
+      child: const Text('Sign In'),
+    );
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
@@ -85,17 +100,8 @@ class _MyHomePageState extends State<MyHomePage> {
                 content,
               ),
             ),
-            TextButton(
-              style: TextButton.styleFrom(
-                backgroundColor: Colors.deepPurpleAccent,
-                padding: const EdgeInsets.all(16.0),
-                textStyle: const TextStyle(fontSize: 20),
-              ),
-              onPressed: () {
-                logtoClient.signIn(context, redirectUri, signInCallback);
-              },
-              child: const Text('Sign In'),
-            ),
+            // TODO: show signout button
+            isAuthenticated ? signInButton : signInButton,
           ],
         ),
       ),

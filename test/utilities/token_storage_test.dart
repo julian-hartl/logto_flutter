@@ -1,9 +1,17 @@
+import 'dart:developer';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:logto_dart_sdk/src/utilities/id_token.dart';
 import 'package:logto_dart_sdk/src/utilities/logto_storage_strategy.dart';
 import 'package:logto_dart_sdk/src/utilities/token_storage.dart';
 
 import '../mocks/mock_storage.dart';
+
+class _TokenStorageKeys {
+  static const accessTokenKey = 'logto_access_token';
+  static const refreshTokenKey = 'logto_refresh_token';
+  static const idTokenKey = 'logto_id_token';
+}
 
 void main() {
   group('token storage test', () {
@@ -16,77 +24,80 @@ void main() {
 
     setUp(() {
       storageStrategy = MockStorageStrategy();
-      sut = TokenStorage(
-        idToken: idToken,
-        accessToken: accessToken,
-        refreshToken: refreshToken,
-        storageStrategy: storageStrategy,
-      );
+      sut = TokenStorage(storageStrategy);
     });
+
     tearDown(() async {
       await sut.clear();
     });
     test('should set access token locally and persist it', () async {
       await sut.setAccessToken(accessToken);
 
-      expect(sut.accessToken, equals(accessToken));
-      final persistedStorage = await TokenStorage.fromPersistence(
-        storageStrategy: storageStrategy,
-      );
-      expect(persistedStorage.accessToken, accessToken);
+      expect(await sut.accessToken, equals(accessToken));
+
+      final persistedStorageAccessToken =
+          await storageStrategy.read(key: _TokenStorageKeys.accessTokenKey);
+
+      expect(persistedStorageAccessToken, accessToken);
     });
 
     test('should set refresh token locally and persist it', () async {
       await sut.setRefreshToken(refreshToken);
 
-      expect(sut.refreshToken, equals(refreshToken));
-      final persistedStorage = await TokenStorage.fromPersistence(
-        storageStrategy: storageStrategy,
-      );
-      expect(persistedStorage.refreshToken, refreshToken);
+      expect(await sut.refreshToken, equals(refreshToken));
+
+      final persistedStorageRefreshToken =
+          await storageStrategy.read(key: _TokenStorageKeys.refreshTokenKey);
+
+      expect(persistedStorageRefreshToken, refreshToken);
     });
 
     test('should set id token locally and persist it', () async {
       await sut.setIdToken(idToken);
 
-      expect(sut.idToken, equals(idToken));
-      final persistedStorage = await TokenStorage.fromPersistence(
-        storageStrategy: storageStrategy,
-      );
-      expect(persistedStorage.idToken, isNotNull);
+      final persistedStorageIdToken =
+          await storageStrategy.read(key: _TokenStorageKeys.idTokenKey);
+
+      expect(persistedStorageIdToken, idToken.serialization);
     });
 
     test('save method should persist current state of token storage', () async {
-      await sut.save();
+      await sut.save(
+          idToken: idToken,
+          accessToken: accessToken,
+          refreshToken: refreshToken);
 
-      final persistedStorage = await TokenStorage.fromPersistence(
-        storageStrategy: storageStrategy,
-      );
-
-      expect(persistedStorage.accessToken, accessToken);
-      expect(persistedStorage.refreshToken, refreshToken);
-      expect(persistedStorage.idToken, isNotNull);
+      expect(await storageStrategy.read(key: _TokenStorageKeys.accessTokenKey),
+          accessToken);
+      expect(await storageStrategy.read(key: _TokenStorageKeys.refreshTokenKey),
+          refreshToken);
+      expect(await storageStrategy.read(key: _TokenStorageKeys.idTokenKey),
+          idToken.serialization);
     });
 
     test('clear method should delete persisted state', () async {
-      await sut.save();
-      await sut.clear();
-      final persistedStorage = await TokenStorage.fromPersistence(
-        storageStrategy: storageStrategy,
-      );
+      await sut.save(
+          idToken: idToken,
+          accessToken: accessToken,
+          refreshToken: refreshToken);
 
-      expect(persistedStorage.accessToken, null);
-      expect(persistedStorage.refreshToken, null);
-      expect(persistedStorage.idToken, null);
+      await sut.clear();
+
+      expect(await storageStrategy.read(key: _TokenStorageKeys.accessTokenKey),
+          null);
+      expect(await storageStrategy.read(key: _TokenStorageKeys.refreshTokenKey),
+          null);
+      expect(
+          await storageStrategy.read(key: _TokenStorageKeys.idTokenKey), null);
     });
 
     test('clear method should delete in memory state', () async {
       await sut.save();
       await sut.clear();
 
-      expect(sut.accessToken, null);
-      expect(sut.refreshToken, null);
-      expect(sut.idToken, null);
+      expect(await sut.accessToken, null);
+      expect(await sut.refreshToken, null);
+      expect(await sut.idToken, null);
     });
   });
 }
