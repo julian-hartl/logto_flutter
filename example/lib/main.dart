@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:logto_dart_sdk/logto_dart_sdk.dart';
+import 'package:logto_dart_sdk/logto_client.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+void main() {
   runApp(const MyApp());
 }
 
@@ -38,27 +36,30 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   String content = 'Logto SDK Demo Home Page';
-  bool isAuthenticated = false;
-
-  final client = http.Client();
   final redirectUri = 'io.logto://callback';
   final config = const LogtoConfig(
-      appId: 'xgSxW0MDpVqW2GDvCnlNb', endpoint: 'https://logto.dev');
+    appId: 'xgSxW0MDpVqW2GDvCnlNb',
+    endpoint: 'https://logto.dev',
+  );
 
   late LogtoClient logtoClient;
 
   @override
   void initState() {
     super.initState();
-    _init();
+    logtoClient = LogtoClient(config);
   }
 
-  void render() async {
-    if (await logtoClient.isAuthenticated) {
-      var claims = await logtoClient.idTokenClaims;
+  void onSignIn() {
+    if (logtoClient.isAuthenticate) {
       setState(() {
         content = claims!.toJson().toString();
         isAuthenticated = true;
+      });
+    }
+    else{
+      setState(() {
+        content = '';
       });
     }
   }
@@ -100,17 +101,27 @@ class _MyHomePageState extends State<MyHomePage> {
                 content,
               ),
             ),
-            // TODO: show signout button
-            isAuthenticated ? signInButton : signInButton,
+            TextButton(
+              style: TextButton.styleFrom(
+                backgroundColor: Colors.deepPurpleAccent,
+                padding: const EdgeInsets.all(16.0),
+                textStyle: const TextStyle(fontSize: 20),
+              ),
+              onPressed: () async {
+                await logtoClient.signIn(
+                  context,
+                  options: SignInOptions(
+                    redirectUri: redirectUri,
+                    primaryColor: Colors.deepPurpleAccent,
+                  ),
+                );
+                onSignIn();
+              },
+              child: const Text('Sign In'),
+            ),
           ],
         ),
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    client.close();
-    super.dispose();
   }
 }
