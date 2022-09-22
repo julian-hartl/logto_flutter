@@ -11,6 +11,12 @@ import '/src/utilities/id_token.dart';
 import '/src/utilities/pkce.dart';
 import '/src/utilities/token_storage.dart';
 import '/src/utilities/utils.dart' as utils;
+import '/src/utilities/webview_provider.dart';
+import '/src/utilities/logto_storage_strategy.dart';
+import '/src/utilities/id_token.dart';
+import '/src/utilities/pkce.dart';
+import '/src/utilities/token_storage.dart';
+import '/src/utilities/utils.dart' as utils;
 import 'src/widgets/webview/webview.dart';
 
 export '/src/interfaces/logto_config.dart';
@@ -28,16 +34,16 @@ class LogtoClient {
 
   OidcProviderConfig? _oidcConfig;
 
+  LogtoClient(this.config, this._httpClient,
+      [LogtoStorageStrategy? storageProvider]) {
+    _tokenStorage = TokenStorage(storageProvider);
+  }
   void _initHttpClient() {
     _httpClient = http.Client();
   }
 
   LogtoClient(this.config) {
     _initHttpClient();
-  }
-
-  bool get isAuthenticate {
-    return _tokenStorage.idToken != null;
   }
 
   Future<bool> get isAuthenticated async {
@@ -65,11 +71,15 @@ class LogtoClient {
     return _oidcConfig!;
   }
 
-  // TODO: add loading to prevent multi click
+  bool _loading = false;
+
   Future<void> signIn(
-    BuildContext context, {
-    required SignInOptions options,
-  }) async {
+    BuildContext context,
+    String redirectUri,
+    void Function() signInCallback,
+  ) async {
+    if (_loading) return;
+    _loading = true;
     _initHttpClient();
     _pkce = PKCE.generate();
     _state = utils.generateRandomString();
@@ -108,6 +118,7 @@ class LogtoClient {
       );
     }
     _httpClient.close();
+    _loading = false;
   }
 
   Future<void> _handleSignInCallback(
@@ -146,10 +157,9 @@ class LogtoClient {
           LogtoAuthExceptions.idTokenValidationError, '$violations');
     }
 
-    _tokenStorage = TokenStorage(
-      idToken: idToken,
-      accessToken: tokenResponse.refreshToken,
-      refreshToken: tokenResponse.refreshToken,
-    );
+    await _tokenStorage.save(
+        idToken: idToken,
+        accessToken: tokenResponse.accessToken,
+        refreshToken: tokenResponse.refreshToken);
   }
 }

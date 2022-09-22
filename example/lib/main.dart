@@ -51,10 +51,21 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void onSignIn() {
+    await logtoClient.signIn(
+      context,
+      options: SignInOptions(
+        redirectUri: redirectUri,
+        primaryColor: Colors.deepPurpleAccent,
+      ),
+    );
+    onSignIn();
     if (logtoClient.isAuthenticate) {
       setState(() {
-        content = claims!.toJson().toString();
-        isAuthenticated = true;
+        var claims = logtoClient.idTokenClaims?.toJson();
+
+        if (claims != null) {
+          content = claims.entries.map((e) => '${e.key}:${e.value}').join("\n");
+        }
       });
     }
     else{
@@ -62,15 +73,6 @@ class _MyHomePageState extends State<MyHomePage> {
         content = '';
       });
     }
-  }
-
-  void _init() async {
-    logtoClient = LogtoClient(config, client);
-    render();
-  }
-
-  void signInCallback() {
-    render();
   }
 
   @override
@@ -86,7 +88,6 @@ class _MyHomePageState extends State<MyHomePage> {
       },
       child: const Text('Sign In'),
     );
-
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
@@ -97,28 +98,12 @@ class _MyHomePageState extends State<MyHomePage> {
           children: <Widget>[
             Container(
               padding: const EdgeInsets.all(64),
-              child: SelectableText(
+              child: Text(
                 content,
               ),
             ),
-            TextButton(
-              style: TextButton.styleFrom(
-                backgroundColor: Colors.deepPurpleAccent,
-                padding: const EdgeInsets.all(16.0),
-                textStyle: const TextStyle(fontSize: 20),
-              ),
-              onPressed: () async {
-                await logtoClient.signIn(
-                  context,
-                  options: SignInOptions(
-                    redirectUri: redirectUri,
-                    primaryColor: Colors.deepPurpleAccent,
-                  ),
-                );
-                onSignIn();
-              },
-              child: const Text('Sign In'),
-            ),
+            // TODO: show signout button
+            isAuthenticated ? signInButton : signInButton,
           ],
         ),
       ),
