@@ -80,8 +80,9 @@ class _MyHomePageState extends State<MyHomePage> {
         padding: const EdgeInsets.all(16.0),
         textStyle: const TextStyle(fontSize: 20),
       ),
-      onPressed: () {
-        logtoClient.signIn(context, redirectUri, signInCallback);
+      onPressed: () async {
+        await logtoClient.signIn(context, redirectUri);
+        signInCallback();
       },
       child: const Text('Sign In'),
     );

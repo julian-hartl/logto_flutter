@@ -7,11 +7,11 @@ import '/src/exceptions/logto_auth_exceptions.dart';
 import '/src/interfaces/logto_interfaces.dart';
 import '/src/utilities/constants.dart';
 import '/src/utilities/id_token.dart';
+import '/src/utilities/logto_storage_strategy.dart';
 import '/src/utilities/pkce.dart';
 import '/src/utilities/token_storage.dart';
 import '/src/utilities/utils.dart' as utils;
 import '/src/utilities/webview_provider.dart';
-import '/src/utilities/logto_storage_strategy.dart';
 
 export '/src/interfaces/logto_config.dart';
 
@@ -37,12 +37,12 @@ class LogtoClient {
   }
 
   Future<String?> get idToken async {
-    var token = await _tokenStorage.idToken;
+    final token = await _tokenStorage.idToken;
     return token?.serialization;
   }
 
   Future<OpenIdClaims?> get idTokenClaims async {
-    var token = await _tokenStorage.idToken;
+    final token = await _tokenStorage.idToken;
     return token?.claims;
   }
 
@@ -51,7 +51,7 @@ class LogtoClient {
       return _oidcConfig!;
     }
 
-    var discoveryUri = utils.appendUriPath(config.endpoint, discoveryPath);
+    final discoveryUri = utils.appendUriPath(config.endpoint, discoveryPath);
     _oidcConfig = await logto_core.fetchOidcConfig(_httpClient, discoveryUri);
 
     return _oidcConfig!;
@@ -59,20 +59,22 @@ class LogtoClient {
 
   bool _loading = false;
 
-  Future<void> signIn(
+  Future<bool> signIn(
     BuildContext context,
-    String redirectUri,
-    void Function() signInCallback,
-  ) async {
-    if (_loading) return;
+    String redirectUri, {
+    Color? primaryColor,
+    Color? backgroundColor,
+    Widget? title,
+  }) async {
+    if (_loading) return false;
     _loading = true;
     _pkce = PKCE.generate();
     _state = utils.generateRandomString();
     _tokenStorage.setIdToken(null);
 
-    var oidcConfig = await _getOidcConfig();
+    final oidcConfig = await _getOidcConfig();
 
-    var signInUri = logto_core.generateSignInUri(
+    final signInUri = logto_core.generateSignInUri(
       authorizationEndpoint: oidcConfig.authorizationEndpoint,
       clientId: config.appId,
       redirectUri: redirectUri,
@@ -83,39 +85,50 @@ class LogtoClient {
     );
 
     // ignore: use_build_context_synchronously
-    await Navigator.push(
+    final callbackUri = await Navigator.push<String>(
       context,
       MaterialPageRoute(
         builder: (context) => LogtoWebview(
           url: signInUri,
           signInCallbackUri: redirectUri,
-          signInCallbackHandler: (String callbackUri) async {
-            await _handleSignInCallback(callbackUri, redirectUri);
-            signInCallback();
-          },
+          backgroundColor: backgroundColor,
+          primaryColor: primaryColor,
+          title: title,
         ),
       ),
     );
+
+    if (callbackUri == null) {
+      return false;
+    }
+
+    await _handleSignInCallback(callbackUri, redirectUri);
+
     _loading = false;
+    return true;
   }
 
   Future _handleSignInCallback(String callbackUri, String redirectUri) async {
-    var code = logto_core.verifyAndParseCodeFromCallbackUri(
-        callbackUri, redirectUri, _state);
+    final code = logto_core.verifyAndParseCodeFromCallbackUri(
+      callbackUri,
+      redirectUri,
+      _state,
+    );
 
-    var oidcConfig = await _getOidcConfig();
+    final oidcConfig = await _getOidcConfig();
 
-    var tokenResponse = await logto_core.fetchTokenByAuthorizationCode(
-        httpClient: _httpClient,
-        tokenEndPoint: oidcConfig.tokenEndpoint,
-        code: code,
-        codeVerifier: _pkce.codeVerifier,
-        clientId: config.appId,
-        redirectUri: redirectUri);
+    final tokenResponse = await logto_core.fetchTokenByAuthorizationCode(
+      httpClient: _httpClient,
+      tokenEndPoint: oidcConfig.tokenEndpoint,
+      code: code,
+      codeVerifier: _pkce.codeVerifier,
+      clientId: config.appId,
+      redirectUri: redirectUri,
+    );
 
-    var idToken = IdToken.unverified(tokenResponse.idToken);
+    final idToken = IdToken.unverified(tokenResponse.idToken);
 
-    var keyStore = JsonWebKeyStore()
+    final keyStore = JsonWebKeyStore()
       ..addKeySetUrl(Uri.parse(oidcConfig.jwksUri));
 
     if (!await idToken.verify(keyStore)) {
@@ -123,7 +136,7 @@ class LogtoClient {
           LogtoAuthExceptions.idTokenValidationError, 'invalid jws signature');
     }
 
-    var violations = idToken.claims
+    final violations = idToken.claims
         .validate(issuer: Uri.parse(oidcConfig.issuer), clientId: config.appId);
 
     if (violations.isNotEmpty) {
@@ -132,8 +145,9 @@ class LogtoClient {
     }
 
     await _tokenStorage.save(
-        idToken: idToken,
-        accessToken: tokenResponse.accessToken,
-        refreshToken: tokenResponse.refreshToken);
+      idToken: idToken,
+      accessToken: tokenResponse.accessToken,
+      refreshToken: tokenResponse.refreshToken,
+    );
   }
 }

@@ -6,14 +6,18 @@ import 'package:webview_flutter/webview_flutter.dart';
 class LogtoWebview extends StatefulWidget {
   final Uri url;
   final String signInCallbackUri;
-  final Future<void> Function(String callbackUri) signInCallbackHandler;
+  final Color? primaryColor;
+  final Color? backgroundColor;
+  final Widget? title;
 
-  const LogtoWebview(
-      {Key? key,
-      required this.url,
-      required this.signInCallbackUri,
-      required this.signInCallbackHandler})
-      : super(key: key);
+  const LogtoWebview({
+    Key? key,
+    required this.url,
+    required this.signInCallbackUri,
+    this.primaryColor,
+    this.backgroundColor,
+    this.title,
+  }) : super(key: key);
 
   @override
   State<LogtoWebview> createState() => _LogtoWebView();
@@ -29,23 +33,62 @@ class _LogtoWebView extends State<LogtoWebview> {
   }
 
   NavigationDecision _interceptNavigation(NavigationRequest request) {
+    if (!mounted) return NavigationDecision.prevent;
     if (request.url.startsWith(widget.signInCallbackUri)) {
-      widget.signInCallbackHandler(request.url);
-      Navigator.pop(context);
+      Navigator.pop(context, request.url);
       return NavigationDecision.prevent;
     }
 
     return NavigationDecision.navigate;
   }
 
+  bool _loading = true;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: WebView(
-        initialUrl: widget.url.toString(),
-        onWebViewCreated: (controller) => webViewController = controller,
-        navigationDelegate: _interceptNavigation,
-        javascriptMode: JavascriptMode.unrestricted,
+      appBar: AppBar(
+        title: widget.title ?? const Text('Sign In'),
+        leading: BackButton(
+          onPressed: () async {
+            final canGoBack = (await webViewController?.canGoBack()) ?? false;
+            if (canGoBack) {
+              webViewController!.goBack();
+            } else {
+              if (mounted) {
+                Navigator.pop(context);
+              }
+            }
+          },
+        ),
+        backgroundColor: widget.primaryColor,
+      ),
+      body: SafeArea(
+        child: Stack(
+          children: [
+            WebView(
+              initialUrl: widget.url.toString(),
+              onPageFinished: (url) {
+                if (_loading && mounted) {
+                  setState(() {
+                    _loading = false;
+                  });
+                }
+              },
+              zoomEnabled: false,
+              backgroundColor: widget.backgroundColor,
+              onWebViewCreated: (controller) => webViewController = controller,
+              navigationDelegate: _interceptNavigation,
+              javascriptMode: JavascriptMode.unrestricted,
+            ),
+            if (_loading)
+              Center(
+                child: CircularProgressIndicator(
+                  color: widget.primaryColor,
+                ),
+              )
+          ],
+        ),
       ),
     );
   }
