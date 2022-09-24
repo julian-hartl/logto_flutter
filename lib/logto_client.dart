@@ -24,9 +24,15 @@ class LogtoClient {
 
   static late TokenStorage _tokenStorage;
 
+  /// Custom [http.Client].
+  ///
+  /// Note that you will have to call `close()` yourself when passing a [http.Client] instance.
+  final http.Client? _httpClient;
+
   OidcProviderConfig? _oidcConfig;
 
-  LogtoClient(this.config, [LogtoStorageStrategy? storageProvider]) {
+  LogtoClient(this.config,
+      [LogtoStorageStrategy? storageProvider, this._httpClient]) {
     _tokenStorage = TokenStorage(storageProvider);
   }
 
@@ -65,7 +71,7 @@ class LogtoClient {
     Widget? title,
   }) async {
     if (_loading) return false;
-    final httpClient = http.Client();
+    final httpClient = _httpClient ?? http.Client();
     try {
       _loading = true;
       _pkce = PKCE.generate();
@@ -107,7 +113,7 @@ class LogtoClient {
       return true;
     } finally {
       _loading = false;
-      httpClient.close();
+      if (_httpClient == null) httpClient.close();
     }
   }
 
