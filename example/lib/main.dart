@@ -79,8 +79,7 @@ class _MyHomePageState extends State<MyHomePage> {
         textStyle: const TextStyle(fontSize: 20),
       ),
       onPressed: () async {
-        final success =await logtoClient.signIn(context, redirectUri);
-        print(success);
+        await logtoClient.signIn(context, redirectUri);
         signInCallback();
       },
       child: const Text('Sign In'),
