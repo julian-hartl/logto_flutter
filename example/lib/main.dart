@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:logto_dart_sdk/logto_dart_sdk.dart';
 
 void main() async {
@@ -40,7 +39,6 @@ class _MyHomePageState extends State<MyHomePage> {
   String content = 'Logto SDK Demo Home Page';
   bool isAuthenticated = false;
 
-  final client = http.Client();
   final redirectUri = 'io.logto://callback';
   final config = const LogtoConfig(
       appId: 'xgSxW0MDpVqW2GDvCnlNb', endpoint: 'https://logto.dev');
@@ -64,7 +62,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _init() async {
-    logtoClient = LogtoClient(config, client);
+    logtoClient = LogtoClient(config);
     render();
   }
 
@@ -81,7 +79,8 @@ class _MyHomePageState extends State<MyHomePage> {
         textStyle: const TextStyle(fontSize: 20),
       ),
       onPressed: () async {
-        await logtoClient.signIn(context, redirectUri);
+        final success =await logtoClient.signIn(context, redirectUri);
+        print(success);
         signInCallback();
       },
       child: const Text('Sign In'),
@@ -107,11 +106,5 @@ class _MyHomePageState extends State<MyHomePage> {
         ),
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    client.close();
-    super.dispose();
   }
 }

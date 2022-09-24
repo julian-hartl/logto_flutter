@@ -18,7 +18,6 @@ export '/src/interfaces/logto_config.dart';
 // Logto SDK
 class LogtoClient {
   final LogtoConfig config;
-  final http.Client _httpClient;
 
   late PKCE _pkce;
   late String _state;
@@ -27,8 +26,7 @@ class LogtoClient {
 
   OidcProviderConfig? _oidcConfig;
 
-  LogtoClient(this.config, this._httpClient,
-      [LogtoStorageStrategy? storageProvider]) {
+  LogtoClient(this.config, [LogtoStorageStrategy? storageProvider]) {
     _tokenStorage = TokenStorage(storageProvider);
   }
 
@@ -46,13 +44,13 @@ class LogtoClient {
     return token?.claims;
   }
 
-  Future<OidcProviderConfig> _getOidcConfig() async {
+  Future<OidcProviderConfig> _getOidcConfig(http.Client httpClient) async {
     if (_oidcConfig != null) {
       return _oidcConfig!;
     }
 
     final discoveryUri = utils.appendUriPath(config.endpoint, discoveryPath);
-    _oidcConfig = await logto_core.fetchOidcConfig(_httpClient, discoveryUri);
+    _oidcConfig = await logto_core.fetchOidcConfig(httpClient, discoveryUri);
 
     return _oidcConfig!;
   }
@@ -67,58 +65,64 @@ class LogtoClient {
     Widget? title,
   }) async {
     if (_loading) return false;
-    _loading = true;
-    _pkce = PKCE.generate();
-    _state = utils.generateRandomString();
-    _tokenStorage.setIdToken(null);
+    final httpClient = http.Client();
+    try {
+      _loading = true;
+      _pkce = PKCE.generate();
+      _state = utils.generateRandomString();
+      _tokenStorage.setIdToken(null);
+      // ignore: use_build_context_synchronously
+      final callbackUri = await Navigator.push<String>(
+        context,
+        MaterialPageRoute(
+          builder: (context) => LogtoWebview(
+            getUrl: () async {
+              final oidcConfig = await _getOidcConfig(httpClient);
 
-    final oidcConfig = await _getOidcConfig();
-
-    final signInUri = logto_core.generateSignInUri(
-      authorizationEndpoint: oidcConfig.authorizationEndpoint,
-      clientId: config.appId,
-      redirectUri: redirectUri,
-      codeChallenge: _pkce.codeChallenge,
-      state: _state,
-      resources: config.resources,
-      scopes: config.scopes,
-    );
-
-    // ignore: use_build_context_synchronously
-    final callbackUri = await Navigator.push<String>(
-      context,
-      MaterialPageRoute(
-        builder: (context) => LogtoWebview(
-          url: signInUri,
-          signInCallbackUri: redirectUri,
-          backgroundColor: backgroundColor,
-          primaryColor: primaryColor,
-          title: title,
+              final signInUri = logto_core.generateSignInUri(
+                authorizationEndpoint: oidcConfig.authorizationEndpoint,
+                clientId: config.appId,
+                redirectUri: redirectUri,
+                codeChallenge: _pkce.codeChallenge,
+                state: _state,
+                resources: config.resources,
+                scopes: config.scopes,
+              );
+              return signInUri;
+            },
+            signInCallbackUri: redirectUri,
+            backgroundColor: backgroundColor,
+            primaryColor: primaryColor,
+            title: title,
+          ),
         ),
-      ),
-    );
+      );
 
-    if (callbackUri == null) {
-      return false;
+      if (callbackUri == null) {
+        return false;
+      }
+
+      await _handleSignInCallback(callbackUri, redirectUri, httpClient);
+
+      return true;
+    } finally {
+      _loading = false;
+      httpClient.close();
     }
-
-    await _handleSignInCallback(callbackUri, redirectUri);
-
-    _loading = false;
-    return true;
   }
 
-  Future _handleSignInCallback(String callbackUri, String redirectUri) async {
+  Future _handleSignInCallback(
+      String callbackUri, String redirectUri, http.Client httpClient) async {
     final code = logto_core.verifyAndParseCodeFromCallbackUri(
       callbackUri,
       redirectUri,
       _state,
     );
 
-    final oidcConfig = await _getOidcConfig();
+    final oidcConfig = await _getOidcConfig(httpClient);
 
     final tokenResponse = await logto_core.fetchTokenByAuthorizationCode(
-      httpClient: _httpClient,
+      httpClient: httpClient,
       tokenEndPoint: oidcConfig.tokenEndpoint,
       code: code,
       codeVerifier: _pkce.codeVerifier,

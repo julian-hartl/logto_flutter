@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 class LogtoWebview extends StatefulWidget {
-  final Uri url;
+  final Future<Uri> Function() getUrl;
   final String signInCallbackUri;
   final Color? primaryColor;
   final Color? backgroundColor;
@@ -12,7 +12,7 @@ class LogtoWebview extends StatefulWidget {
 
   const LogtoWebview({
     Key? key,
-    required this.url,
+    required this.getUrl,
     required this.signInCallbackUri,
     this.primaryColor,
     this.backgroundColor,
@@ -66,21 +66,29 @@ class _LogtoWebView extends State<LogtoWebview> {
       body: SafeArea(
         child: Stack(
           children: [
-            WebView(
-              initialUrl: widget.url.toString(),
-              onPageFinished: (url) {
-                if (_loading && mounted) {
-                  setState(() {
-                    _loading = false;
-                  });
-                }
-              },
-              zoomEnabled: false,
-              backgroundColor: widget.backgroundColor,
-              onWebViewCreated: (controller) => webViewController = controller,
-              navigationDelegate: _interceptNavigation,
-              javascriptMode: JavascriptMode.unrestricted,
-            ),
+            FutureBuilder<Uri>(
+                future: widget.getUrl(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasData) {
+                    return WebView(
+                      initialUrl: snapshot.requireData.toString(),
+                      onPageFinished: (url) {
+                        if (_loading && mounted) {
+                          setState(() {
+                            _loading = false;
+                          });
+                        }
+                      },
+                      zoomEnabled: false,
+                      backgroundColor: widget.backgroundColor,
+                      onWebViewCreated: (controller) =>
+                          webViewController = controller,
+                      navigationDelegate: _interceptNavigation,
+                      javascriptMode: JavascriptMode.unrestricted,
+                    );
+                  }
+                  return const SizedBox();
+                }),
             if (_loading)
               Center(
                 child: CircularProgressIndicator(
