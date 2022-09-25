@@ -26,10 +26,13 @@ class LogtoWebview extends StatefulWidget {
 class _LogtoWebView extends State<LogtoWebview> {
   WebViewController? webViewController;
 
+  late final Future<Uri> url;
+
   @override
   void initState() {
-    if (Platform.isAndroid) WebView.platform = AndroidWebView();
     super.initState();
+    if (Platform.isAndroid) WebView.platform = AndroidWebView();
+    url = widget.getUrl();
   }
 
   NavigationDecision _interceptNavigation(NavigationRequest request) {
@@ -67,7 +70,7 @@ class _LogtoWebView extends State<LogtoWebview> {
         child: Stack(
           children: [
             FutureBuilder<Uri>(
-                future: widget.getUrl(),
+                future: url,
                 builder: (context, snapshot) {
                   if (snapshot.hasData) {
                     return WebView(
