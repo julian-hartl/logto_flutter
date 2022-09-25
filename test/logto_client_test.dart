@@ -20,7 +20,10 @@ void main() {
 
     const config = LogtoConfig(appId: 'foo', endpoint: 'foo@siverhand.io');
 
-    final logto = LogtoClient(config, MockStorageStrategy());
+    final logto = LogtoClient(
+      config: config,
+      storageProvider: MockStorageStrategy(),
+    );
 
     expect(logto.config.appId, appId);
     expect(logto.config.endpoint, endpoint);

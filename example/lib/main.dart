@@ -62,7 +62,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _init() async {
-    logtoClient = LogtoClient(config);
+    logtoClient = LogtoClient(config: config);
     render();
   }
 

@@ -27,12 +27,16 @@ class LogtoClient {
   /// Custom [http.Client].
   ///
   /// Note that you will have to call `close()` yourself when passing a [http.Client] instance.
-  final http.Client? _httpClient;
+  late final http.Client? _httpClient;
 
   OidcProviderConfig? _oidcConfig;
 
-  LogtoClient(this.config,
-      [LogtoStorageStrategy? storageProvider, this._httpClient]) {
+  LogtoClient({
+    required this.config,
+    LogtoStorageStrategy? storageProvider,
+    http.Client? httpClient,
+  }) {
+    _httpClient = httpClient;
     _tokenStorage = TokenStorage(storageProvider);
   }
 
