@@ -1,3 +1,4 @@
+import 'package:flutter_appauth/flutter_appauth.dart';
 import 'package:flutter_web_auth/flutter_web_auth.dart';
 import 'package:http/http.dart' as http;
 import 'package:jose/jose.dart';
@@ -40,13 +41,17 @@ class LogtoClient {
 
   OidcProviderConfig? _oidcConfig;
 
+  final FlutterAppAuth _appAuth;
+
   LogtoClient({
     required this.config,
     LogtoStorageStrategy? storageProvider,
     http.Client? httpClient,
-  }) {
-    _httpClient = httpClient;
-    _tokenStorage = TokenStorage(storageProvider);
+  })  : _appAuth = const FlutterAppAuth(),
+        _httpClient = httpClient {
+    _tokenStorage = TokenStorage(
+      storageProvider ?? SecureStorageStrategy(),
+    );
   }
 
   Future<bool> get isAuthenticated async {

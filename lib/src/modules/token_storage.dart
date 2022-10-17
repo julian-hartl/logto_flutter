@@ -20,10 +20,8 @@ class TokenStorage {
   static TokenStorage? loaded;
 
   TokenStorage(
-    LogtoStorageStrategy? storageStrategy,
-  ) {
-    _storage = storageStrategy ?? SecureStorageStrategy();
-  }
+    LogtoStorageStrategy storageStrategy,
+  ): _storage = storageStrategy;
 
   static IdToken? _decodeIdToken(String? encoded) {
     if (encoded == null) return null;
