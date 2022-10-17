@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:logto_dart_sdk/logto_client.dart';
 import 'package:http/http.dart' as http;
+import 'package:logto_dart_sdk/logto_client.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -43,7 +43,9 @@ class _MyHomePageState extends State<MyHomePage> {
 
   final redirectUri = 'io.logto://callback';
   final config = const LogtoConfig(
-      appId: 'xgSxW0MDpVqW2GDvCnlNb', endpoint: 'https://logto.dev');
+    appId: 'xgSxW0MDpVqW2GDvCnlNb',
+    endpoint: 'https://logto.dev',
+  );
 
   late LogtoClient logtoClient;
 

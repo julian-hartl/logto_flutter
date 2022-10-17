@@ -1,5 +1,4 @@
 import 'package:flutter_appauth/flutter_appauth.dart';
-import 'package:flutter_web_auth/flutter_web_auth.dart';
 import 'package:http/http.dart' as http;
 import 'package:jose/jose.dart';
 
@@ -178,30 +177,65 @@ class LogtoClient {
 
     try {
       _loading = true;
-      _pkce = PKCE.generate();
-      _state = utils.generateRandomString();
-      _tokenStorage.setIdToken(null);
-      final oidcConfig = await _getOidcConfig(httpClient);
+      final discoveryUri = utils.appendUriPath(config.endpoint, discoveryPath);
 
-      final signInUri = logto_core.generateSignInUri(
-        authorizationEndpoint: oidcConfig.authorizationEndpoint,
-        clientId: config.appId,
-        redirectUri: redirectUri,
-        codeChallenge: _pkce.codeChallenge,
-        state: _state,
-        resources: config.resources,
-        scopes: config.scopes,
-      );
-      String? callbackUri;
-
-      final redirectUriScheme = Uri.parse(redirectUri).scheme;
-      callbackUri = await FlutterWebAuth.authenticate(
-        url: signInUri.toString(),
-        callbackUrlScheme: redirectUriScheme,
-        preferEphemeral: true,
+      final tokenResponse = await _appAuth.authorizeAndExchangeCode(
+        AuthorizationTokenRequest(
+          config.appId,
+          redirectUri,
+          discoveryUrl: discoveryUri,
+          scopes: (config.scopes ?? [])..addAll(reservedScopes),
+          preferEphemeralSession: true,
+          issuer: config.endpoint,
+          additionalParameters: {
+            'resource': (config.resources ?? []).join(" "),
+          },
+        ),
       );
 
-      await _handleSignInCallback(callbackUri, redirectUri, httpClient);
+      // _pkce = PKCE.generate();
+      // _state = utils.generateRandomString();
+      // _tokenStorage.setIdToken(null);
+      // final oidcConfig = await _getOidcConfig(httpClient);
+      //
+      // final signInUri = logto_core.generateSignInUri(
+      //   authorizationEndpoint: oidcConfig.authorizationEndpoint,
+      //   clientId: config.appId,
+      //   redirectUri: redirectUri,
+      //   codeChallenge: _pkce.codeChallenge,
+      //   state: _state,
+      //   resources: config.resources,
+      //   scopes: config.scopes,
+      // );
+      // String? callbackUri;
+      //
+      // final redirectUriScheme = Uri.parse(redirectUri).scheme;
+      // callbackUri = await FlutterWebAuth.authenticate(
+      //   url: signInUri.toString(),
+      //   callbackUrlScheme: redirectUriScheme,
+      //   preferEphemeral: true,
+      // );
+
+      if (tokenResponse == null ||
+          tokenResponse.idToken == null ||
+          tokenResponse.refreshToken == null ||
+          tokenResponse.accessToken == null ||
+          tokenResponse.accessTokenExpirationDateTime == null) {
+        throw LogtoAuthException(
+            LogtoAuthExceptions.authenticationError, "Invalid token response.");
+      }
+
+      final idToken = IdToken.unverified(tokenResponse.idToken!);
+
+      // await _verifyIdToken(idToken, oidcConfig);
+
+      await _tokenStorage.save(
+        idToken: idToken,
+        accessToken: tokenResponse.accessToken!,
+        refreshToken: tokenResponse.refreshToken,
+        expiresIn:
+            tokenResponse.accessTokenExpirationDateTime!.millisecondsSinceEpoch,
+      );
     } finally {
       _loading = false;
       if (_httpClient == null) httpClient.close();
