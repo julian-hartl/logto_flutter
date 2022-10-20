@@ -187,10 +187,10 @@ class LogtoClient {
           scopes: (config.scopes ?? [])..addAll(reservedScopes),
           preferEphemeralSession: true,
           issuer: config.endpoint,
-          additionalParameters: {
-            for (final resource in (config.resources ?? []))
-              'resource': resource
-          },
+          // additionalParameters: {
+          //   for (final resource in (config.resources ?? []))
+          //     'resource': resource
+          // },
         ),
       );
 
