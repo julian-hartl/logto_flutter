@@ -185,41 +185,17 @@ class LogtoClient {
           redirectUri,
           discoveryUrl: discoveryUri,
           scopes: (config.scopes ?? [])..addAll(reservedScopes),
-          preferEphemeralSession: true,
           issuer: config.endpoint,
-          // additionalParameters: {
-          //   for (final resource in (config.resources ?? []))
-          //     'resource': resource
-          // },
+          additionalParameters: {
+            for (final resource in (config.resources ?? []))
+              // obviously does not work as each resource is overridden by the one after
+              'resource': resource
+          },
         ),
       );
 
-      // _pkce = PKCE.generate();
-      // _state = utils.generateRandomString();
-      // _tokenStorage.setIdToken(null);
-      // final oidcConfig = await _getOidcConfig(httpClient);
-      //
-      // final signInUri = logto_core.generateSignInUri(
-      //   authorizationEndpoint: oidcConfig.authorizationEndpoint,
-      //   clientId: config.appId,
-      //   redirectUri: redirectUri,
-      //   codeChallenge: _pkce.codeChallenge,
-      //   state: _state,
-      //   resources: config.resources,
-      //   scopes: config.scopes,
-      // );
-      // String? callbackUri;
-      //
-      // final redirectUriScheme = Uri.parse(redirectUri).scheme;
-      // callbackUri = await FlutterWebAuth.authenticate(
-      //   url: signInUri.toString(),
-      //   callbackUrlScheme: redirectUriScheme,
-      //   preferEphemeral: true,
-      // );
-
       if (tokenResponse == null ||
           tokenResponse.idToken == null ||
-          tokenResponse.refreshToken == null ||
           tokenResponse.accessToken == null ||
           tokenResponse.accessTokenExpirationDateTime == null) {
         throw LogtoAuthException(
@@ -243,36 +219,6 @@ class LogtoClient {
     }
   }
 
-  Future _handleSignInCallback(
-      String callbackUri, String redirectUri, http.Client httpClient) async {
-    final code = logto_core.verifyAndParseCodeFromCallbackUri(
-      callbackUri,
-      redirectUri,
-      _state,
-    );
-
-    final oidcConfig = await _getOidcConfig(httpClient);
-
-    final tokenResponse = await logto_core.fetchTokenByAuthorizationCode(
-      httpClient: httpClient,
-      tokenEndPoint: oidcConfig.tokenEndpoint,
-      code: code,
-      codeVerifier: _pkce.codeVerifier,
-      clientId: config.appId,
-      redirectUri: redirectUri,
-    );
-
-    final idToken = IdToken.unverified(tokenResponse.idToken);
-
-    await _verifyIdToken(idToken, oidcConfig);
-
-    await _tokenStorage.save(
-        idToken: idToken,
-        accessToken: tokenResponse.accessToken,
-        refreshToken: tokenResponse.refreshToken,
-        expiresIn: tokenResponse.expiresIn);
-  }
-
   Future<void> signOut() async {
     // Throw error is authentication status not found
     final idToken = await _tokenStorage.idToken;
@@ -285,6 +231,16 @@ class LogtoClient {
     }
 
     try {
+      final discoveryUri = utils.appendUriPath(config.endpoint, discoveryPath);
+      // todo: include sign out redirect uri
+      try {
+        await _appAuth.endSession(
+          EndSessionRequest(
+            discoveryUrl: discoveryUri,
+            issuer: config.endpoint,
+          ),
+        );
+      } catch (_) {}
       final oidcConfig = await _getOidcConfig(httpClient);
 
       // Revoke refresh token if exist
