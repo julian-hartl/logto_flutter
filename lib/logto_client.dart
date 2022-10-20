@@ -188,7 +188,8 @@ class LogtoClient {
           preferEphemeralSession: true,
           issuer: config.endpoint,
           additionalParameters: {
-            'resource': (config.resources ?? []).join(" "),
+            for (final resource in (config.resources ?? []))
+              'resource': resource
           },
         ),
       );
