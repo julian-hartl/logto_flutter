@@ -232,12 +232,14 @@ class LogtoClient {
 
     try {
       final discoveryUri = utils.appendUriPath(config.endpoint, discoveryPath);
-      // todo: include sign out redirect uri
       try {
         await _appAuth.endSession(
           EndSessionRequest(
             discoveryUrl: discoveryUri,
             issuer: config.endpoint,
+            // todo: include sign out redirect uri
+            postLogoutRedirectUrl: "post sign out redirect uri",
+            idTokenHint: idToken.serialization,
           ),
         );
       } catch (_) {}
